@@ -7,8 +7,14 @@
 //
 
 #import "ViewController.h"
+#import "NYBezierPathGraphView.h"
+
+#define SCREEN_WIDTH ([[UIScreen mainScreen]bounds].size.width)
+#define SCREEN_HEIGHT ([[UIScreen mainScreen]bounds].size.height)
 
 @interface ViewController ()
+
+@property (nonatomic, strong) NYBezierPathGraphView *salesGraphView;
 
 @end
 
@@ -16,14 +22,21 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // Do any additional setup after loading the view, typically from a nib.
+    self.view.backgroundColor = [UIColor whiteColor];
+    [self.view addSubview:self.salesGraphView];
+    
+    NSArray *arr1 = @[@"14",@"42",@"15",@"35",@"22",@"30"];
+    [self.salesGraphView setValueArray:arr1 xAxisTitle:@"月份" yAxisTitle:@"销售额(万元)"];
 }
+ 
 
-
-- (void)didReceiveMemoryWarning {
-    [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
+- (NYBezierPathGraphView *)salesGraphView
+{
+    if (!_salesGraphView) {
+        _salesGraphView = [[NYBezierPathGraphView alloc]initWithFrame:CGRectMake(0, 100,SCREEN_WIDTH,250)];
+        
+    }
+    return _salesGraphView;
 }
-
 
 @end
