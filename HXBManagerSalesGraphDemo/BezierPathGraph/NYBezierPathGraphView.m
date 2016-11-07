@@ -21,7 +21,8 @@ static const NSInteger xAxisOriginY = 212;
 @property (nonatomic, strong) UIBezierPath *curvePath;
 
 @property (nonatomic, strong) UIView *panView;
-@property (nonatomic, strong) UIView *panLine;
+@property (nonatomic, strong) UIView *visiblePanLine;
+@property (nonatomic, strong) UIView *invisiblePanLine;
 @property (nonatomic, strong) UIPanGestureRecognizer *panGesture;
 @property (nonatomic, strong) UILongPressGestureRecognizer *longPressGesture;
 
@@ -37,6 +38,7 @@ static const NSInteger xAxisOriginY = 212;
 @property (nonatomic, strong) NSMutableArray *yAxisValueArray;       ///纵坐标上的数字数组
 @property (nonatomic, strong) NSMutableArray *pointViewArray;
 
+@property (nonatomic, assign) NSInteger visiblePointIndex;          ///显示的pointView的序号
 
 @end
 
@@ -47,6 +49,7 @@ static const NSInteger xAxisOriginY = 212;
     self = [super initWithFrame:frame];
     if (self) {
         [self addSubview:self.bgImageView];
+        self.visiblePointIndex = 0;
     }
     return self;
 }
@@ -199,13 +202,14 @@ static const NSInteger xAxisOriginY = 212;
     CGFloat graphMaxY = [[self.pointYArray valueForKeyPath:@"@max.floatValue"] floatValue];
     CGFloat graphMinY = [[self.pointYArray valueForKeyPath:@"@min.floatValue"] floatValue];
     
-    self.panView = [[UIView alloc]initWithFrame:CGRectMake(graphMinX, graphMinY, graphMaxX-graphMinX, graphMaxY-graphMinY)];
+    self.panView = [[UIView alloc]initWithFrame:CGRectMake(graphMinX, graphMinY, graphMaxX-graphMinX+1, graphMaxY-graphMinY+40)];
     self.panView.backgroundColor = [UIColor blackColor];
     self.panView.clipsToBounds = YES;
     self.panView.backgroundColor = [UIColor clearColor];
     [self.panView addGestureRecognizer:self.panGesture];
     [self.panView addGestureRecognizer:self.longPressGesture];
-    [self.panView addSubview:self.panLine];
+    [self.panView addSubview:self.invisiblePanLine];
+    [self.panView addSubview:self.visiblePanLine];
     [self addSubview:self.panView];
 
     [self.layer addSublayer:self.shapeLayer];
@@ -216,29 +220,39 @@ static const NSInteger xAxisOriginY = 212;
 {
     CGPoint translation = [recognizer locationInView:self];
     CGPoint convertedPoint =  [self convertPoint:translation toView:self.panView];
-    self.panLine.frame = CGRectMake(convertedPoint.x - 0.5, 0, 0.5, 182);
-    self.panLine.alpha = 0.8;
+    self.invisiblePanLine.frame = CGRectMake(convertedPoint.x - 0.5, 0, 0.5, 163);
     GraphPointView *visiblePoint = [self getVisiblePointView];
     visiblePoint.alpha = 1;
-    
-    
+
     if (recognizer.state == UIGestureRecognizerStateEnded)
     {
-        self.panLine.alpha = 0;
+        self.visiblePanLine.alpha = 0;
         [self hidePointViews];
     }
 }
 
-///根据panLine计算哪个点该显示
+///根据invisiblePanLine计算哪个点该显示
 - (GraphPointView *)getVisiblePointView
 {
-    CGFloat x = self.panLine.frame.origin.x;
+    CGFloat x = self.invisiblePanLine.frame.origin.x;
     CGFloat graphMaxX = [[self.xAxisPointXArray valueForKeyPath:@"@max.floatValue"] floatValue];
     CGFloat graphMinX = [[self.xAxisPointXArray valueForKeyPath:@"@min.floatValue"] floatValue];
     CGFloat gap = (graphMaxX - graphMinX)/10;
-    NSInteger gapIndex = x/gap + 1;
-    NSInteger pointIndex = gapIndex/2;
-    return self.pointViewArray[pointIndex];
+    NSInteger pointIndex = (x/gap + 1)/2;
+    if (pointIndex >= self.pointViewArray.count) {
+        pointIndex = self.pointViewArray.count - 1;
+    }
+    if (pointIndex != self.visiblePointIndex) {
+        self.visiblePointIndex = pointIndex;
+        CGRect frame = self.visiblePanLine.frame;
+        frame.origin.x =  pointIndex * gap * 2;
+        self.visiblePanLine.frame = frame;
+        self.visiblePanLine.alpha = 0.8;
+        [self hidePointViews];
+        return self.pointViewArray[self.visiblePointIndex];
+    }
+    return self.pointViewArray[self.visiblePointIndex];
+
 }
 
 ///隐藏所有pointView
@@ -261,14 +275,23 @@ static const NSInteger xAxisOriginY = 212;
     return _bgImageView;
 }
 
-- (UIView *)panLine
+- (UIView *)invisiblePanLine
 {
-    if (!_panLine) {
-        _panLine = [[UIView alloc]initWithFrame:CGRectMake(65, 22, 1, 182)];
-        _panLine.backgroundColor = [UIColor whiteColor];
-        _panLine.alpha = 0;
+    if (!_invisiblePanLine) {
+        _invisiblePanLine = [[UIView alloc]initWithFrame:CGRectMake(65, 0, 1, 163)];
+        _invisiblePanLine.alpha = 0;
     }
-    return _panLine;
+    return _invisiblePanLine;
+}
+
+- (UIView *)visiblePanLine
+{
+    if (!_visiblePanLine) {
+        _visiblePanLine = [[UIView alloc]initWithFrame:CGRectMake(65, 0, 0.5, 143)];
+        _visiblePanLine.backgroundColor = [UIColor whiteColor];
+        _visiblePanLine.alpha = 0;
+    }
+    return _visiblePanLine;
 }
 
 - (UIPanGestureRecognizer *)panGesture
