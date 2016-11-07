@@ -14,11 +14,16 @@
 static const NSInteger xAxisOriginY = 212;
 
 
-@interface NYBezierPathGraphView ()
+@interface NYBezierPathGraphView ()<UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong) UIImageView *bgImageView;
 @property (nonatomic, strong) CAShapeLayer *shapeLayer;
 @property (nonatomic, strong) UIBezierPath *curvePath;
+
+@property (nonatomic, strong) UIView *panView;
+@property (nonatomic, strong) UIView *panLine;
+@property (nonatomic, strong) UIPanGestureRecognizer *panGesture;
+@property (nonatomic, strong) UILongPressGestureRecognizer *longPressGesture;
 
 @property (nonatomic, copy) NSString *xAxisTitle;   /// x轴数据title
 @property (nonatomic, copy) NSString *yAxisTitle;   /// y轴数据title
@@ -120,6 +125,7 @@ static const NSInteger xAxisOriginY = 212;
     {
         CGPoint point = CGPointMake([self.xAxisPointXArray[i] floatValue], [self.pointYArray[i] floatValue]);
         GraphPointView *pointView = [[GraphPointView alloc]initWithFrame:CGRectMake(0, 0, 37, 52)];
+        pointView.alpha = 0;
         pointView.center = CGPointMake(point.x, point.y);
         pointView.content = [NSString stringWithFormat:@"%.1f",[self.valueArray[i] floatValue]];
         [self addSubview:pointView];
@@ -167,6 +173,7 @@ static const NSInteger xAxisOriginY = 212;
     }
 }
 
+///画线
 - (void)drawBezierLineGraph
 {
     NSMutableArray *pointPositionArray = [NSMutableArray array];
@@ -186,7 +193,61 @@ static const NSInteger xAxisOriginY = 212;
     self.shapeLayer.lineWidth = 3;
     self.shapeLayer.path = self.curvePath.CGPath;
     self.shapeLayer.lineCap = kCALineCapRound;
+    
+    CGFloat graphMaxX = [[self.xAxisPointXArray valueForKeyPath:@"@max.floatValue"] floatValue];
+    CGFloat graphMinX = [[self.xAxisPointXArray valueForKeyPath:@"@min.floatValue"] floatValue];
+    CGFloat graphMaxY = [[self.pointYArray valueForKeyPath:@"@max.floatValue"] floatValue];
+    CGFloat graphMinY = [[self.pointYArray valueForKeyPath:@"@min.floatValue"] floatValue];
+    
+    self.panView = [[UIView alloc]initWithFrame:CGRectMake(graphMinX, graphMinY, graphMaxX-graphMinX, graphMaxY-graphMinY)];
+    self.panView.backgroundColor = [UIColor blackColor];
+    self.panView.clipsToBounds = YES;
+    self.panView.backgroundColor = [UIColor clearColor];
+    [self.panView addGestureRecognizer:self.panGesture];
+    [self.panView addGestureRecognizer:self.longPressGesture];
+    [self.panView addSubview:self.panLine];
+    [self addSubview:self.panView];
+
     [self.layer addSublayer:self.shapeLayer];
+}
+
+#pragma mark Touch Gesture
+- (void)handleGestureAction:(UIGestureRecognizer *)recognizer
+{
+    CGPoint translation = [recognizer locationInView:self];
+    CGPoint convertedPoint =  [self convertPoint:translation toView:self.panView];
+    self.panLine.frame = CGRectMake(convertedPoint.x - 0.5, 0, 0.5, 182);
+    self.panLine.alpha = 0.8;
+    GraphPointView *visiblePoint = [self getVisiblePointView];
+    visiblePoint.alpha = 1;
+    
+    
+    if (recognizer.state == UIGestureRecognizerStateEnded)
+    {
+        self.panLine.alpha = 0;
+        [self hidePointViews];
+    }
+}
+
+///根据panLine计算哪个点该显示
+- (GraphPointView *)getVisiblePointView
+{
+    CGFloat x = self.panLine.frame.origin.x;
+    CGFloat graphMaxX = [[self.xAxisPointXArray valueForKeyPath:@"@max.floatValue"] floatValue];
+    CGFloat graphMinX = [[self.xAxisPointXArray valueForKeyPath:@"@min.floatValue"] floatValue];
+    CGFloat gap = (graphMaxX - graphMinX)/10;
+    NSInteger gapIndex = x/gap + 1;
+    NSInteger pointIndex = gapIndex/2;
+    return self.pointViewArray[pointIndex];
+}
+
+///隐藏所有pointView
+- (void)hidePointViews
+{
+    for (int i = 0; i < self.pointViewArray.count; i ++) {
+        GraphPointView *pointView = self.pointViewArray[i];
+        pointView.alpha = 0;
+    }
 }
 
 #pragma mark Get
@@ -198,6 +259,35 @@ static const NSInteger xAxisOriginY = 212;
         _bgImageView.image = [[UIImage imageNamed:@"sixmonthbg"] resizableImageWithCapInsets:insets resizingMode:UIImageResizingModeStretch];
     }
     return _bgImageView;
+}
+
+- (UIView *)panLine
+{
+    if (!_panLine) {
+        _panLine = [[UIView alloc]initWithFrame:CGRectMake(65, 22, 1, 182)];
+        _panLine.backgroundColor = [UIColor whiteColor];
+        _panLine.alpha = 0;
+    }
+    return _panLine;
+}
+
+- (UIPanGestureRecognizer *)panGesture
+{
+    if (!_panGesture) {
+        _panGesture = [[UIPanGestureRecognizer alloc]initWithTarget:self action:@selector(handleGestureAction:)];
+        [_panGesture setMaximumNumberOfTouches:1];
+        _panGesture.delegate = self;
+    }
+    return _panGesture;
+}
+
+- (UILongPressGestureRecognizer *)longPressGesture
+{
+    if (!_longPressGesture) {
+        _longPressGesture = [[UILongPressGestureRecognizer alloc]initWithTarget:self action:@selector(handleGestureAction:)];
+        _longPressGesture.minimumPressDuration = 0.1f;
+    }
+    return _longPressGesture;
 }
 
 @end
