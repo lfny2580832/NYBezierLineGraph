@@ -49,7 +49,7 @@ static const NSInteger xAxisOriginY = 212;
     self = [super initWithFrame:frame];
     if (self) {
         [self addSubview:self.bgImageView];
-        self.visiblePointIndex = 0;
+        self.visiblePointIndex = -1;
     }
     return self;
 }

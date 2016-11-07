@@ -11,6 +11,7 @@
 
 #define SCREEN_WIDTH ([[UIScreen mainScreen]bounds].size.width)
 #define SCREEN_HEIGHT ([[UIScreen mainScreen]bounds].size.height)
+#define rgb(r,g,b) [UIColor colorWithRed:r/255.0f green:g/255.0f blue:b/255.0f alpha:1.0f]
 
 @interface ViewController ()
 
@@ -22,7 +23,7 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = [UIColor whiteColor];
+    self.view.backgroundColor = rgb(247, 247, 247);
     [self.view addSubview:self.salesGraphView];
     
     NSArray *arr1 = @[@"14",@"42",@"15",@"35",@"22",@"30"];
